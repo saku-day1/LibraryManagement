@@ -43,10 +43,10 @@ erDiagram
 | カラム | 型 | 制約 | 説明 |
 |---|---|---|---|
 | id | bigint | PK, AUTO_INCREMENT | 書籍 ID |
-| title | varchar(255) | NOT NULL | タイトル |
-| author | varchar(100) | NOT NULL | 著者名 |
+| title | varchar(255) | NOT NULL, 最大255文字 | タイトル |
+| author | varchar(100) | NOT NULL, 最大100文字 | 著者名 |
 | status | enum | NOT NULL, DEFAULT 'unread' | 読書ステータス |
-| isbn | varchar(13) | NULLABLE | ISBN（13桁） |
+| isbn | varchar(13) | NULLABLE, 13桁固定 | ISBN（13桁） |
 | cover_image_url | text | NULLABLE | 表紙画像の外部 URL |
 | rating | tinyint | NULLABLE | 評価（1〜5）|
 | memo | text | NULLABLE | 感想メモ |
@@ -56,6 +56,16 @@ erDiagram
 | updated_at | datetime | NOT NULL | 更新日時 |
 
 status の enum 値: `unread`（未読） / `reading`（読書中） / `completed`（読了）
+
+### モデルバリデーション（app/models/book.rb）
+
+| フィールド | バリデーション | エラー時レスポンス |
+|---|---|---|
+| title | 必須・最大 255 文字 | 422 + errors |
+| author | 必須・最大 100 文字 | 422 + errors |
+| isbn | 13 桁固定（nil / 空文字は許可） | 422 + errors |
+| rating | 1〜5 の整数（nil 許可） | 422 + errors |
+| status | enum 値以外は Rails が自動 reject | 422 |
 
 ---
 
