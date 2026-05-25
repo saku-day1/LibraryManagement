@@ -1,7 +1,25 @@
 <template>
   <div class="book-card">
     <div class="card-body">
-      <h3 class="book-title">{{ book.title }}</h3>
+      <div class="card-header">
+        <!-- 未読: 閉じた本（前表紙） -->
+        <svg v-if="book.status === 'unread'" class="status-icon status-unread" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="未読">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <!-- 読書中: 開いた本 -->
+        <svg v-else-if="book.status === 'reading'" class="status-icon status-reading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="読書中">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <!-- 読了: 閉じた本（後ろ表紙）+ チェック -->
+        <svg v-else class="status-icon status-completed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="読了">
+          <path d="M19.5 17H6A2.5 2.5 0 0 0 4 19.5"/>
+          <path d="M17.5 2H4v20h13.5A2.5 2.5 0 0 0 20 19.5v-15A2.5 2.5 0 0 0 17.5 2z"/>
+          <polyline points="9,12 11,14 15,10"/>
+        </svg>
+        <h3 class="book-title">{{ book.title }}</h3>
+      </div>
       <p class="book-author">{{ book.author }}</p>
       <div v-if="book.rating" class="book-rating">
         <span v-for="n in 5" :key="n" :class="{ filled: n <= book.rating! }">★</span>
@@ -58,6 +76,30 @@ defineEmits<{ edit: []; move: [newStatus: BookStatus]; delete: [] }>()
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.status-unread {
+  color: #7b8cde;
+}
+
+.status-reading {
+  color: #f5a623;
+}
+
+.status-completed {
+  color: #27ae60;
 }
 
 .book-title {
