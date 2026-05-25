@@ -63,17 +63,61 @@ status の enum 値: `unread`（未読） / `reading`（読書中） / `complete
 
 Base URL: `/api/v1`
 
-| Method | Path | 説明 | ステータスコード |
+### エンドポイント一覧
+
+| Method | Path | 用途 | ステータスコード |
 |---|---|---|---|
-| GET | /books | 全書籍取得（`?status=unread` でフィルタ可） | 200 |
-| POST | /books | 書籍新規登録 | 201 |
-| GET | /books/:id | 書籍詳細取得 | 200 / 404 |
-| PATCH | /books/:id | 書籍更新（ステータス変更含む） | 200 / 404 / 422 |
+| GET | /books | 書籍一覧取得・フィルタリング | 200 |
+| POST | /books | 書籍新規登録 | 201 / 422 |
+| GET | /books/:id | 書籍詳細取得（画面表示） | 200 / 404 |
+| PATCH | /books/:id | 書籍情報の編集 | 200 / 404 / 422 |
+| PATCH | /books/:id | カンバンボードの移動（status のみ更新） | 200 / 404 |
 | DELETE | /books/:id | 書籍削除 | 204 / 404 |
+
+> PATCH は「書籍情報の編集」と「カンバン移動」の両方で使用する。送信するフィールドが異なるだけで、エンドポイントは同一（`/books/:id`）。
+
+### HTTPメソッドと用途の対応
+
+| 操作 | Method | 理由 |
+|---|---|---|
+| 画面表示（一覧・詳細） | GET | データ取得のみ。副作用なし |
+| フィルタリング・検索 | GET | 条件はクエリパラメータで渡す。副作用なし |
+| 書籍登録 | POST | 新しいリソースを作成する |
+| 書籍情報の編集 | PATCH | リソースの一部フィールドを更新する |
+| カンバンボードの移動 | PATCH | status フィールドのみを部分更新する |
+| 書籍削除 | DELETE | リソースを削除する |
+
+### クエリパラメータ（GET /books）
+
+| パラメータ | 型 | 説明 | 例 |
+|---|---|---|---|
+| status | string | ステータスでフィルタ | `?status=reading` |
+| q | string | タイトル・著者の部分一致検索 | `?q=リーダブル` |
 
 ### リクエスト・レスポンス例
 
-**POST /books**
+**GET /books?status=reading**
+
+```json
+// Response 200
+[
+  {
+    "id": 2,
+    "title": "Clean Architecture",
+    "author": "Robert C. Martin",
+    "status": "reading",
+    "isbn": null,
+    "cover_image_url": null,
+    "rating": null,
+    "memo": null,
+    "started_at": "2026-05-01",
+    "completed_at": null,
+    "created_at": "2026-05-25T00:00:00.000Z"
+  }
+]
+```
+
+**POST /books（書籍登録）**
 
 ```json
 // Request Body
@@ -100,14 +144,34 @@ Base URL: `/api/v1`
 }
 ```
 
-**PATCH /books/:id（ステータス変更）**
+**PATCH /books/:id（書籍情報の編集）**
 
 ```json
 // Request Body
+{
+  "title": "リーダブルコード 改訂版",
+  "rating": 5,
+  "memo": "とても読みやすかった"
+}
+
+// Response 200
+{ "id": 1, "title": "リーダブルコード 改訂版", "rating": 5, "memo": "とても読みやすかった", ... }
+```
+
+**PATCH /books/:id（カンバンボードの移動）**
+
+```json
+// Request Body — status フィールドのみ送信
 { "status": "reading" }
 
 // Response 200
 { "id": 1, "status": "reading", ... }
+```
+
+**DELETE /books/:id（書籍削除）**
+
+```
+// Response 204 No Content（ボディなし）
 ```
 
 ---
