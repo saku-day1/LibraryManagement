@@ -49,35 +49,55 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { Book, BookStatus } from '../types/book'
+import { getBooks, createBook, updateBook, deleteBook } from '../api/books'
 import KanbanColumn from './KanbanColumn.vue'
 import BookModal from './BookModal.vue'
 import DeleteConfirmDialog from './DeleteConfirmDialog.vue'
 
-const unreadBooks = ref<Book[]>([
-  { id: 1, title: 'リーダブルコード', author: 'Dustin Boswell', status: 'unread' },
-])
-const readingBooks = ref<Book[]>([
-  { id: 2, title: 'Clean Architecture', author: 'Robert C. Martin', status: 'reading' },
-])
-const completedBooks = ref<Book[]>([
-  { id: 3, title: 'ドメイン駆動設計', author: 'Eric Evans', status: 'completed', rating: 5 },
-])
+const unreadBooks = ref<Book[]>([])
+const readingBooks = ref<Book[]>([])
+const completedBooks = ref<Book[]>([])
 
 const showModal = ref(false)
 const editingBook = ref<Book | null>(null)
 const deletingBook = ref<Book | null>(null)
-let nextId = 4
 
-function fixStatuses() {
-  unreadBooks.value.forEach(b => { b.status = 'unread' })
-  readingBooks.value.forEach(b => { b.status = 'reading' })
-  completedBooks.value.forEach(b => { b.status = 'completed' })
+onMounted(async () => {
+  const books = await getBooks()
+  unreadBooks.value = books.filter(b => b.status === 'unread')
+  readingBooks.value = books.filter(b => b.status === 'reading')
+  completedBooks.value = books.filter(b => b.status === 'completed')
+})
+
+async function fixStatuses() {
+  const updates: Promise<unknown>[] = []
+
+  for (const book of unreadBooks.value) {
+    if (book.status !== 'unread') {
+      book.status = 'unread'
+      updates.push(updateBook(book.id, { status: 'unread' }))
+    }
+  }
+  for (const book of readingBooks.value) {
+    if (book.status !== 'reading') {
+      book.status = 'reading'
+      updates.push(updateBook(book.id, { status: 'reading' }))
+    }
+  }
+  for (const book of completedBooks.value) {
+    if (book.status !== 'completed') {
+      book.status = 'completed'
+      updates.push(updateBook(book.id, { status: 'completed' }))
+    }
+  }
+
+  await Promise.all(updates)
 }
 
-function handleAdd(newBook: Omit<Book, 'id'>) {
-  const book: Book = { id: nextId++, ...newBook }
+async function handleAdd(newBook: Omit<Book, 'id'>) {
+  const book = await createBook(newBook)
   if (book.status === 'reading') readingBooks.value.push(book)
   else if (book.status === 'completed') completedBooks.value.push(book)
   else unreadBooks.value.push(book)
@@ -93,16 +113,17 @@ function closeModal() {
   editingBook.value = null
 }
 
-function moveBook(book: Book, newStatus: BookStatus) {
-  handleUpdate({ ...book, status: newStatus })
+async function moveBook(book: Book, newStatus: BookStatus) {
+  await handleUpdate({ ...book, status: newStatus })
 }
 
 function openDeleteDialog(book: Book) {
   deletingBook.value = book
 }
 
-function confirmDelete() {
+async function confirmDelete() {
   if (!deletingBook.value) return
+  await deleteBook(deletingBook.value.id)
   for (const arr of [unreadBooks, readingBooks, completedBooks]) {
     const idx = arr.value.findIndex(b => b.id === deletingBook.value!.id)
     if (idx !== -1) {
@@ -113,17 +134,18 @@ function confirmDelete() {
   deletingBook.value = null
 }
 
-function handleUpdate(updated: Book) {
+async function handleUpdate(updated: Book) {
+  const saved = await updateBook(updated.id, updated)
   for (const arr of [unreadBooks, readingBooks, completedBooks]) {
-    const idx = arr.value.findIndex(b => b.id === updated.id)
+    const idx = arr.value.findIndex(b => b.id === saved.id)
     if (idx !== -1) {
       arr.value.splice(idx, 1)
       break
     }
   }
-  if (updated.status === 'reading') readingBooks.value.push(updated)
-  else if (updated.status === 'completed') completedBooks.value.push(updated)
-  else unreadBooks.value.push(updated)
+  if (saved.status === 'reading') readingBooks.value.push(saved)
+  else if (saved.status === 'completed') completedBooks.value.push(saved)
+  else unreadBooks.value.push(saved)
 }
 </script>
 
