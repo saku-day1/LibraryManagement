@@ -126,13 +126,157 @@ services:
 - RDS: プライベートサブネット、EC2 からの 3306 ポートのみ許可
 - 環境変数: EC2 の `.env` で DB 接続情報を管理（git 管理外）
 
-## 実装フェーズ
+---
 
-| フェーズ | 内容 |
+## 実装フェーズ詳細
+
+### Phase 1 — Vue 3 + TypeScript プロジェクト作成・カンバンボード UI
+
+**目標:** モックデータでカンバンボードが動作するフロントエンドを構築する。
+
+#### 実行コマンド
+
+```bash
+# frontend/ ディレクトリにプロジェクト作成
+npm create vite@latest frontend -- --template vue-ts
+cd frontend
+npm install
+npm install axios vue-draggable-plus
+```
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
 |---|---|
-| Phase 1 | Vue 3 + TypeScript プロジェクト作成・カンバンボード UI（モックデータ） |
-| Phase 2 | ドラッグ&ドロップ・書籍登録モーダル・詳細編集 UI |
-| Phase 3 | Rails API プロジェクト作成・DB マイグレーション・CRUD API 実装 |
-| Phase 4 | フロントを API に接続・モックデータを削除 |
-| Phase 5 | Docker Compose でローカル統合確認 |
-| Phase 6 | AWS EC2 + RDS 環境構築・デプロイ |
+| `src/types/book.ts` | Book 型定義（id, title, author, status など） |
+| `src/components/KanbanBoard.vue` | 3カラムを横並びで表示するボード全体 |
+| `src/components/KanbanColumn.vue` | 未読・読書中・読了 の各カラム |
+| `src/components/BookCard.vue` | タイトル・著者を表示するカード |
+| `src/App.vue` | KanbanBoard をマウントするルートコンポーネント |
+
+#### モックデータ仕様
+
+`KanbanBoard.vue` 内に以下の構造でモックデータを定義する:
+
+```ts
+const books = ref<Book[]>([
+  { id: 1, title: 'リーダブルコード', author: 'Dustin Boswell', status: 'unread' },
+  { id: 2, title: 'Clean Architecture', author: 'Robert C. Martin', status: 'reading' },
+])
+```
+
+#### 完了条件
+
+- `npm run dev` で `http://localhost:5173` にアクセスし、3カラムが表示される
+- モックデータの書籍が対応するカラムに表示される
+
+---
+
+### Phase 2 — ドラッグ&ドロップ・書籍登録モーダル・詳細編集 UI
+
+**目標:** カードの移動・登録・編集・削除をモックデータ上で動作させる。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `src/components/KanbanColumn.vue` | vue-draggable-plus で D&D を実装 |
+| `src/components/BookModal.vue` | 登録・編集フォーム（タイトル・著者・ISBN・評価・メモなど） |
+| `src/components/BookCard.vue` | 編集・削除ボタンを追加 |
+
+#### 完了条件
+
+- カードを別カラムにドラッグ&ドロップするとステータスが変わる
+- 「追加」ボタンでモーダルが開き、書籍を登録できる
+- カードの編集・削除が動作する
+
+---
+
+### Phase 3 — Rails API プロジェクト作成・CRUD API 実装
+
+**目標:** Docker 上で動く Rails API を構築し、books テーブルの CRUD を提供する。
+
+#### 実行コマンド
+
+```bash
+# backend/ ディレクトリに Rails API プロジェクト作成
+docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
+  bash -c "gem install rails && rails new . --api --database=mysql --skip-git"
+```
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `config/routes.rb` | `namespace :api do namespace :v1 do resources :books end end` |
+| `app/models/book.rb` | バリデーション（title・author 必須、status enum） |
+| `db/migrate/xxx_create_books.rb` | books テーブル定義（DB設計参照） |
+| `app/controllers/api/v1/books_controller.rb` | index / show / create / update / destroy |
+| `config/initializers/cors.rb` | フロントエンド（localhost:5173）からの CORS を許可 |
+| `Dockerfile` | `ruby:3.3-slim` ベース |
+
+#### 完了条件
+
+- `docker compose up backend db` で起動する
+- `curl http://localhost:3000/api/v1/books` が `[]` を返す
+- `curl -X POST` で書籍を登録・取得・更新・削除できる
+
+---
+
+### Phase 4 — フロントエンドを API に接続
+
+**目標:** モックデータを削除し、Rails API からデータを取得・更新する。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `src/api/books.ts` | Axios を使った CRUD 関数（getBooks, createBook, updateBook, deleteBook） |
+| `src/components/KanbanBoard.vue` | モックデータを削除し `getBooks()` で初期化 |
+| `src/components/KanbanColumn.vue` | D&D 時に `updateBook()` でステータスを API に送信 |
+| `src/components/BookModal.vue` | 登録・編集時に `createBook()` / `updateBook()` を呼ぶ |
+
+#### 完了条件
+
+- ブラウザでカードを移動すると DB のステータスが更新される
+- ページリロード後もデータが保持されている
+
+---
+
+### Phase 5 — Docker Compose でローカル統合確認
+
+**目標:** `docker compose up` の1コマンドで全サービスが起動する。
+
+#### 作成するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `docker-compose.yml` | frontend / backend / db の3サービス定義 |
+| `frontend/Dockerfile` | Node.js 24 ベース、Vite dev サーバー起動 |
+| `backend/Dockerfile` | ruby:3.3-slim ベース、Puma 起動 |
+
+#### 完了条件
+
+- `docker compose up` で3サービスが起動する
+- `http://localhost:5173` でカンバンボードが表示される
+- カードの追加・移動・削除が DB に反映される
+
+---
+
+### Phase 6 — AWS EC2 + RDS デプロイ
+
+**目標:** EC2 上で本番環境を構築し、パブリック IP でアクセスできる状態にする。
+
+#### 手順概要
+
+1. RDS (MySQL 8.0, db.t3.micro) をプライベートサブネットに作成
+2. EC2 (Amazon Linux 2023, t3.micro) を作成し、セキュリティグループで 80/443/22 を開放
+3. EC2 に Ruby 3.3・Nginx・Node.js をインストール
+4. リポジトリをクローンし、`RAILS_ENV=production rails db:migrate` を実行
+5. `npm run build` で Vue を静的ファイルにビルド
+6. Nginx で `/api` を Puma にプロキシ、それ以外は `dist/` を配信
+
+#### 完了条件
+
+- EC2 のパブリック IP にブラウザでアクセスするとカンバンボードが表示される
+- 書籍の追加・ステータス変更が RDS に保存される
