@@ -10,18 +10,21 @@
         v-model:books="unreadBooks"
         @moved="fixStatuses"
         @edit="openEditModal"
+        @move="moveBook"
       />
       <KanbanColumn
         title="読書中"
         v-model:books="readingBooks"
         @moved="fixStatuses"
         @edit="openEditModal"
+        @move="moveBook"
       />
       <KanbanColumn
         title="読了"
         v-model:books="completedBooks"
         @moved="fixStatuses"
         @edit="openEditModal"
+        @move="moveBook"
       />
     </div>
 
@@ -37,7 +40,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { Book } from '../types/book'
+import type { Book, BookStatus } from '../types/book'
 import KanbanColumn from './KanbanColumn.vue'
 import BookModal from './BookModal.vue'
 
@@ -76,6 +79,10 @@ function openEditModal(book: Book) {
 function closeModal() {
   showModal.value = false
   editingBook.value = null
+}
+
+function moveBook(book: Book, newStatus: BookStatus) {
+  handleUpdate({ ...book, status: newStatus })
 }
 
 function handleUpdate(updated: Book) {

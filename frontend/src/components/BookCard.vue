@@ -9,16 +9,30 @@
       <p v-if="book.memo" class="book-memo">{{ book.memo }}</p>
     </div>
     <div class="card-actions">
+      <div class="move-buttons">
+        <button
+          v-if="book.status !== 'unread'"
+          class="btn-move"
+          :title="book.status === 'reading' ? '未読へ戻す' : '読書中へ戻す'"
+          @click.stop="$emit('move', book.status === 'reading' ? 'unread' : 'reading')"
+        >←</button>
+        <button
+          v-if="book.status !== 'completed'"
+          class="btn-move"
+          :title="book.status === 'unread' ? '読書中へ' : '読了へ'"
+          @click.stop="$emit('move', book.status === 'unread' ? 'reading' : 'completed')"
+        >→</button>
+      </div>
       <button class="btn-edit" @click.stop="$emit('edit')">編集</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Book } from '../types/book'
+import type { Book, BookStatus } from '../types/book'
 
 defineProps<{ book: Book }>()
-defineEmits<{ edit: [] }>()
+defineEmits<{ edit: []; move: [newStatus: BookStatus] }>()
 </script>
 
 <style scoped>
@@ -79,7 +93,34 @@ defineEmits<{ edit: [] }>()
 
 .card-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.move-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-move {
+  font-size: 13px;
+  width: 28px;
+  height: 24px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background: #f0f0f0;
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-move:hover {
+  background: #1a1a2e;
+  color: #fff;
+  border-color: #1a1a2e;
 }
 
 .btn-edit {
