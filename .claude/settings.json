@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose logs *)",
+      "Bash(docker info *)",
+      "Bash(docker --version *)",
+      "Bash(curl -s http://localhost:*)",
+      "Bash(xxd *)"
+    ]
+  }
+}

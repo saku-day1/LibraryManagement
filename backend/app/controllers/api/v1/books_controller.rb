@@ -1,7 +1,7 @@
 module Api
   module V1
     class BooksController < ApplicationController
-      before_action :set_book, only: [:show]
+      before_action :set_book, only: [:show, :update]
 
       def index
         books = Book.all.order(created_at: :desc)
@@ -18,6 +18,14 @@ module Api
           render json: book, status: :created
         else
           render json: { errors: book.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
+
+      def update
+        if @book.update(book_params)
+          render json: @book
+        else
+          render json: { errors: @book.errors.full_messages }, status: :unprocessable_entity
         end
       end
 
