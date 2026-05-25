@@ -5,42 +5,91 @@
     </div>
 
     <div class="kanban-board">
-      <KanbanColumn title="未読" :books="unread" />
-      <KanbanColumn title="読書中" :books="reading" />
-      <KanbanColumn title="読了" :books="completed" />
+      <KanbanColumn
+        title="未読"
+        v-model:books="unreadBooks"
+        @moved="fixStatuses"
+        @edit="openEditModal"
+      />
+      <KanbanColumn
+        title="読書中"
+        v-model:books="readingBooks"
+        @moved="fixStatuses"
+        @edit="openEditModal"
+      />
+      <KanbanColumn
+        title="読了"
+        v-model:books="completedBooks"
+        @moved="fixStatuses"
+        @edit="openEditModal"
+      />
     </div>
 
     <BookModal
       v-if="showModal"
-      @close="showModal = false"
+      :book="editingBook ?? undefined"
+      @close="closeModal"
       @add="handleAdd"
+      @update="handleUpdate"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Book } from '../types/book'
 import KanbanColumn from './KanbanColumn.vue'
 import BookModal from './BookModal.vue'
 
-const books = ref<Book[]>([
+const unreadBooks = ref<Book[]>([
   { id: 1, title: 'リーダブルコード', author: 'Dustin Boswell', status: 'unread' },
+])
+const readingBooks = ref<Book[]>([
   { id: 2, title: 'Clean Architecture', author: 'Robert C. Martin', status: 'reading' },
+])
+const completedBooks = ref<Book[]>([
   { id: 3, title: 'ドメイン駆動設計', author: 'Eric Evans', status: 'completed', rating: 5 },
 ])
 
 const showModal = ref(false)
-
+const editingBook = ref<Book | null>(null)
 let nextId = 4
 
-function handleAdd(newBook: Omit<Book, 'id'>) {
-  books.value.push({ id: nextId++, ...newBook })
+function fixStatuses() {
+  unreadBooks.value.forEach(b => { b.status = 'unread' })
+  readingBooks.value.forEach(b => { b.status = 'reading' })
+  completedBooks.value.forEach(b => { b.status = 'completed' })
 }
 
-const unread = computed(() => books.value.filter(b => b.status === 'unread'))
-const reading = computed(() => books.value.filter(b => b.status === 'reading'))
-const completed = computed(() => books.value.filter(b => b.status === 'completed'))
+function handleAdd(newBook: Omit<Book, 'id'>) {
+  const book: Book = { id: nextId++, ...newBook }
+  if (book.status === 'reading') readingBooks.value.push(book)
+  else if (book.status === 'completed') completedBooks.value.push(book)
+  else unreadBooks.value.push(book)
+}
+
+function openEditModal(book: Book) {
+  editingBook.value = { ...book }
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+  editingBook.value = null
+}
+
+function handleUpdate(updated: Book) {
+  for (const arr of [unreadBooks, readingBooks, completedBooks]) {
+    const idx = arr.value.findIndex(b => b.id === updated.id)
+    if (idx !== -1) {
+      arr.value.splice(idx, 1)
+      break
+    }
+  }
+  if (updated.status === 'reading') readingBooks.value.push(updated)
+  else if (updated.status === 'completed') completedBooks.value.push(updated)
+  else unreadBooks.value.push(updated)
+}
 </script>
 
 <style scoped>

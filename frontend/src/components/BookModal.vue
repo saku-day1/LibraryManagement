@@ -1,7 +1,7 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <h2 class="modal-title">書籍を追加</h2>
+      <h2 class="modal-title">{{ isEditMode ? '書籍を編集' : '書籍を追加' }}</h2>
 
       <form @submit.prevent="handleSubmit">
         <div class="field">
@@ -30,9 +30,45 @@
           </select>
         </div>
 
+        <template v-if="isEditMode">
+          <div class="field">
+            <label>評価</label>
+            <div class="rating-input">
+              <span
+                v-for="n in 5"
+                :key="n"
+                class="star"
+                :class="{ filled: n <= (form.rating ?? 0) }"
+                @click="toggleRating(n)"
+              >★</span>
+              <button
+                v-if="form.rating"
+                type="button"
+                class="btn-clear-rating"
+                @click="form.rating = null"
+              >クリア</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>感想メモ</label>
+            <textarea v-model="form.memo" rows="3" placeholder="感想を入力..." />
+          </div>
+
+          <div class="field">
+            <label>読み始め日</label>
+            <input v-model="form.started_at" type="date" />
+          </div>
+
+          <div class="field">
+            <label>読了日</label>
+            <input v-model="form.completed_at" type="date" />
+          </div>
+        </template>
+
         <div class="actions">
           <button type="button" class="btn-cancel" @click="$emit('close')">キャンセル</button>
-          <button type="submit" class="btn-submit">登録</button>
+          <button type="submit" class="btn-submit">{{ isEditMode ? '保存' : '登録' }}</button>
         </div>
       </form>
     </div>
@@ -40,25 +76,35 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import type { Book, BookStatus } from '../types/book'
+
+const props = defineProps<{ book?: Book }>()
 
 const emit = defineEmits<{
   close: []
   add: [book: Omit<Book, 'id'>]
+  update: [book: Book]
 }>()
 
+const isEditMode = computed(() => !!props.book)
+
 const form = reactive({
-  title: '',
-  author: '',
-  isbn: '',
-  status: 'unread' as BookStatus,
+  title: props.book?.title ?? '',
+  author: props.book?.author ?? '',
+  isbn: props.book?.isbn ?? '',
+  status: (props.book?.status ?? 'unread') as BookStatus,
+  rating: props.book?.rating ?? null as number | null,
+  memo: props.book?.memo ?? '',
+  started_at: props.book?.started_at ?? '',
+  completed_at: props.book?.completed_at ?? '',
 })
 
-const errors = reactive({
-  title: '',
-  author: '',
-})
+const errors = reactive({ title: '', author: '' })
+
+function toggleRating(n: number) {
+  form.rating = form.rating === n ? null : n
+}
 
 function validate(): boolean {
   errors.title = form.title.trim() ? '' : 'タイトルは必須です'
@@ -68,12 +114,23 @@ function validate(): boolean {
 
 function handleSubmit() {
   if (!validate()) return
-  emit('add', {
+
+  const payload = {
     title: form.title.trim(),
     author: form.author.trim(),
     isbn: form.isbn.trim() || null,
     status: form.status,
-  })
+    rating: form.rating,
+    memo: form.memo.trim() || null,
+    started_at: form.started_at || null,
+    completed_at: form.completed_at || null,
+  }
+
+  if (isEditMode.value && props.book) {
+    emit('update', { id: props.book.id, ...payload })
+  } else {
+    emit('add', payload)
+  }
   emit('close')
 }
 </script>
@@ -95,6 +152,8 @@ function handleSubmit() {
   padding: 28px 32px;
   width: 420px;
   max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
 
@@ -123,24 +182,61 @@ function handleSubmit() {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   border: 1px solid #ccc;
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  font-family: inherit;
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: #1a1a2e;
+}
+
+.field textarea {
+  resize: vertical;
 }
 
 .error {
   font-size: 12px;
   color: #e53e3e;
   margin: 0;
+}
+
+.rating-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star {
+  font-size: 22px;
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.1s;
+  user-select: none;
+}
+
+.star:hover,
+.star.filled {
+  color: #f5a623;
+}
+
+.btn-clear-rating {
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #888;
+  cursor: pointer;
 }
 
 .actions {
