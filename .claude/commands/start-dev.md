@@ -2,8 +2,13 @@
 
 ## 手順
 
-1. 前提確認
+1. 前提確認（Bash の `ls` または `Test-Path` でディレクトリの存在を確認すること。Glob ツールはディレクトリ名にマッチしないため使用禁止）
    - `frontend/` がない場合: 「Phase 1 がまだ実装されていません」と伝えて終了
+
+```bash
+# 確認コマンド例
+ls frontend 2>&1
+```
 
 2. バックエンドの起動（`backend/` と `docker-compose.yml` が両方存在する場合のみ）
    - Docker が起動していない場合: 「Docker Desktop を起動してください」と伝えて終了
