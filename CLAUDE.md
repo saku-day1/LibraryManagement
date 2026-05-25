@@ -45,14 +45,21 @@
 
 各フェーズの詳細手順（コマンド・作成ファイル・完了条件）は [docs/detailed-design.md#実装フェーズ詳細](docs/detailed-design.md) を参照。
 
-| フェーズ | 概要 |
-|----------|------|
-| Phase 1 | Vue 3 + TypeScript プロジェクト作成・カンバンボード UI（モックデータ） |
-| Phase 2 | ドラッグ&ドロップ・書籍登録モーダル・詳細編集 UI |
-| Phase 3 | Rails API プロジェクト作成・DB マイグレーション・CRUD API 実装 |
-| Phase 4 | フロントを API に接続・モックデータを削除 |
-| Phase 5 | Docker Compose でローカル統合確認 |
-| Phase 6 | AWS EC2 + RDS 環境構築・デプロイ |
+責務分離の観点から Read → Create → Update → Delete の順で実装する。
+
+| フェーズ | 層 | 責務 | 概要 |
+|----------|----|------|------|
+| Phase 1 | フロントエンド | Read | Vue プロジェクト作成・カンバンボード表示（モックデータ） |
+| Phase 2 | フロントエンド | Create | 書籍登録モーダル |
+| Phase 3 | フロントエンド | Update | D&D ステータス変更・編集モーダル |
+| Phase 4 | フロントエンド | Delete | 削除ボタン・確認ダイアログ（フールプルーフ設計） |
+| Phase 5 | バックエンド | Read | Rails プロジェクト作成・一覧・詳細 API |
+| Phase 6 | バックエンド | Create | 書籍登録 API |
+| Phase 7 | バックエンド | Update | 書籍更新 API |
+| Phase 8 | バックエンド | Delete | 書籍削除 API |
+| Phase 9 | 統合 | - | フロントエンドを API に接続・モックデータを削除 |
+| Phase 10 | 統合 | - | Docker Compose でローカル統合確認 |
+| Phase 11 | インフラ | - | AWS EC2 + RDS 環境構築・デプロイ |
 
 ### フェーズ開始時の標準手順
 

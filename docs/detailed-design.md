@@ -303,9 +303,24 @@ services:
 
 ## 実装フェーズ詳細
 
-### Phase 1 — Vue 3 + TypeScript プロジェクト作成・カンバンボード UI
+責務分離の観点から **Read → Create → Update → Delete** の順で実装する。
+フロントエンド（Phase 1〜4）をモックデータで完成させてから、バックエンド（Phase 5〜8）を構築し、最後に接続・統合・デプロイを行う。
 
-**目標:** モックデータでカンバンボードが動作するフロントエンドを構築する。
+```
+[フロントエンド層]          [バックエンド層]        [統合・インフラ]
+Phase 1: Read (表示)
+Phase 2: Create (登録)
+Phase 3: Update (変更)  →  Phase 5: Read API
+Phase 4: Delete (削除)     Phase 6: Create API  →  Phase 9: API 接続
+                           Phase 7: Update API      Phase 10: Docker 統合
+                           Phase 8: Delete API      Phase 11: AWS デプロイ
+```
+
+---
+
+### Phase 1 — [Read] Vue プロジェクト作成・カンバンボード表示
+
+**目標:** モックデータを3カラムに正しく振り分けて表示する。
 
 #### 実行コマンド
 
@@ -320,11 +335,11 @@ npm install axios vue-draggable-plus
 
 | ファイル | 内容 |
 |---|---|
-| `src/types/book.ts` | Book 型定義（id, title, author, status など） |
-| `src/components/KanbanBoard.vue` | 3カラムを横並びで表示するボード全体 |
-| `src/components/KanbanColumn.vue` | 未読・読書中・読了 の各カラム |
-| `src/components/BookCard.vue` | タイトル・著者を表示するカード |
-| `src/App.vue` | KanbanBoard をマウントするルートコンポーネント |
+| `src/types/book.ts` | Book 型定義（id, title, author, status, rating, memo など） |
+| `src/components/KanbanBoard.vue` | 3カラムを横並びで表示・モックデータを status でフィルタして各カラムへ渡す |
+| `src/components/KanbanColumn.vue` | カラムタイトルと BookCard 一覧を表示 |
+| `src/components/BookCard.vue` | タイトル・著者を表示するカード（操作ボタンはまだなし） |
+| `src/App.vue` | KanbanBoard をマウント |
 
 #### モックデータ仕様
 
@@ -332,39 +347,107 @@ npm install axios vue-draggable-plus
 const books = ref<Book[]>([
   { id: 1, title: 'リーダブルコード', author: 'Dustin Boswell', status: 'unread' },
   { id: 2, title: 'Clean Architecture', author: 'Robert C. Martin', status: 'reading' },
+  { id: 3, title: 'ドメイン駆動設計', author: 'Eric Evans', status: 'completed', rating: 5 },
 ])
 ```
 
 #### 完了条件
 
-- `npm run dev` で `http://localhost:5173` にアクセスし、3カラムが表示される
-- モックデータの書籍が対応するカラムに表示される
+- `npm run dev` で `http://localhost:5173` にアクセスし 3カラムが表示される
+- 各書籍が正しいカラムに表示される
 
 ---
 
-### Phase 2 — ドラッグ&ドロップ・書籍登録モーダル・詳細編集 UI
+### Phase 2 — [Create] 書籍登録モーダル
 
-**目標:** カードの移動・登録・編集・削除をモックデータ上で動作させる。
+**目標:** 「+ 追加」ボタンからモーダルを開き、書籍をモックデータに追加できる。
 
 #### 作成・編集するファイル
 
 | ファイル | 内容 |
 |---|---|
-| `src/components/KanbanColumn.vue` | vue-draggable-plus で D&D を実装 |
-| `src/components/BookModal.vue` | 登録・編集フォーム（タイトル・著者・ISBN・評価・メモなど） |
-| `src/components/BookCard.vue` | 編集・削除ボタンを追加 |
+| `src/components/BookModal.vue` | タイトル・著者・ISBN・ステータスの入力フォーム |
+| `src/components/KanbanBoard.vue` | 「+ 追加」ボタンと BookModal の表示制御を追加 |
 
 #### 完了条件
 
-- カードを別カラムにドラッグ&ドロップするとステータスが変わる
-- 「追加」ボタンでモーダルが開き、書籍を登録できる
-- カードの編集・削除が動作する
+- 「+ 追加」ボタンを押すとモーダルが開く
+- フォームを入力して「登録」を押すと、対応するカラムにカードが追加される
+- 必須項目（タイトル・著者）が空のまま登録しようとするとエラーを表示する
 
 ---
 
-### Phase 3 — Rails API プロジェクト作成・CRUD API 実装
+### Phase 3 — [Update] D&D ステータス変更・編集モーダル
 
-**目標:** Docker 上で動く Rails API を構築し、books テーブルの CRUD を提供する。
+**目標:** カードの移動と内容編集をモックデータ上で動作させる。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `src/components/KanbanColumn.vue` | vue-draggable-plus で D&D を実装。ドロップ時に book.status を更新 |
+| `src/components/BookCard.vue` | 「編集」ボタンを追加 |
+| `src/components/BookModal.vue` | 登録・編集を兼用（props で book を受け取った場合は編集モード） |
+
+#### 完了条件
+
+- カードを別カラムにドラッグ&ドロップするとそのカラムに移動する
+- 「編集」ボタンを押すとモーダルが開き、既存データが入力済みの状態で表示される
+- 保存するとカードの表示が更新される
+
+---
+
+### Phase 4 — [Delete] 削除ボタン・確認ダイアログ（フールプルーフ設計）
+
+**目標:** 誤操作を防ぐ確認ステップを必ず挟んでから書籍を削除する。
+
+#### フールプルーフ設計
+
+削除は取り消しができない破壊的操作のため、以下の設計を必ず守る。
+
+| 設計ルール | 内容 |
+|---|---|
+| 確認ダイアログ必須 | 削除ボタンを押しても即削除せず、必ずダイアログを表示する |
+| 対象を明示 | ダイアログに「『{タイトル}』を削除しますか？」と書籍名を表示する |
+| 不可逆であることを明示 | 「この操作は取り消せません」と明記する |
+| デフォルトは安全側 | Enter キー・ダイアログ外クリックは「キャンセル」扱いにする |
+| ボタンの視覚的区別 | 「削除する」は赤色、「キャンセル」はグレーで表示する |
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `src/components/DeleteConfirmDialog.vue` | 確認ダイアログ（書籍名・警告文・削除/キャンセルボタン） |
+| `src/components/BookCard.vue` | 「削除」ボタンを追加し DeleteConfirmDialog を呼び出す |
+| `src/components/KanbanBoard.vue` | 削除確定時に books 配列からカードを除去する処理を追加 |
+
+#### ダイアログ仕様
+
+```
+┌─────────────────────────────────────┐
+│  書籍を削除しますか？                │
+│                                     │
+│  『リーダブルコード』を削除します。  │
+│  この操作は取り消せません。          │
+│                                     │
+│  [キャンセル]        [削除する]      │
+│   (グレー・default)   (赤色)         │
+└─────────────────────────────────────┘
+```
+
+#### 完了条件
+
+- 「削除」ボタンを押すと確認ダイアログが表示される
+- ダイアログに書籍タイトルが表示される
+- 「キャンセル」を押すと何も起きずダイアログが閉じる
+- 「削除する」を押したときのみカードがボードから消える
+- ダイアログ外をクリックしてもキャンセル扱いになる
+
+---
+
+### Phase 5 — [Read] Rails プロジェクト作成・一覧・詳細 API
+
+**目標:** Docker 上で Rails が起動し、書籍一覧・詳細を返す API を提供する。
 
 #### 実行コマンド
 
@@ -378,41 +461,94 @@ docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
 | ファイル | 内容 |
 |---|---|
 | `config/routes.rb` | `namespace :api do namespace :v1 do resources :books end end` |
-| `app/models/book.rb` | バリデーション（title・author 必須、status enum） |
 | `db/migrate/xxx_create_books.rb` | books テーブル定義（テーブル定義参照） |
-| `app/controllers/api/v1/books_controller.rb` | index / show / create / update / destroy |
-| `config/initializers/cors.rb` | フロントエンド（localhost:5173）からの CORS を許可 |
+| `app/models/book.rb` | enum 定義（status）・バリデーション（title・author 必須） |
+| `app/controllers/api/v1/books_controller.rb` | `index` / `show` アクションのみ実装 |
+| `config/initializers/cors.rb` | localhost:5173 からの CORS を許可 |
 | `Dockerfile` | `ruby:3.3-slim` ベース |
 
 #### 完了条件
 
 - `docker compose up backend db` で起動する
 - `curl http://localhost:3000/api/v1/books` が `[]` を返す
-- `curl -X POST` で書籍を登録・取得・更新・削除できる
+- `curl http://localhost:3000/api/v1/books/1` が 404 を返す
 
 ---
 
-### Phase 4 — フロントエンドを API に接続
+### Phase 6 — [Create] 書籍登録 API
 
-**目標:** モックデータを削除し、Rails API からデータを取得・更新する。
+**目標:** POST リクエストで書籍を登録できる。
 
 #### 作成・編集するファイル
 
 | ファイル | 内容 |
 |---|---|
-| `src/api/books.ts` | Axios を使った CRUD 関数（getBooks, createBook, updateBook, deleteBook） |
+| `app/controllers/api/v1/books_controller.rb` | `create` アクションを追加 |
+
+#### 完了条件
+
+- `curl -X POST` で書籍を登録すると 201 と登録データが返る
+- タイトル・著者が空の場合は 422 とエラーメッセージが返る
+
+---
+
+### Phase 7 — [Update] 書籍更新 API
+
+**目標:** PATCH リクエストでステータス変更・書籍情報の更新ができる。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `app/controllers/api/v1/books_controller.rb` | `update` アクションを追加 |
+
+#### 完了条件
+
+- `curl -X PATCH` でステータスを変更すると 200 と更新後データが返る
+- 存在しない ID を指定すると 404 が返る
+
+---
+
+### Phase 8 — [Delete] 書籍削除 API
+
+**目標:** DELETE リクエストで書籍を物理削除できる。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `app/controllers/api/v1/books_controller.rb` | `destroy` アクションを追加 |
+
+#### 完了条件
+
+- `curl -X DELETE` で書籍を削除すると 204 が返る
+- 存在しない ID を指定すると 404 が返る
+
+---
+
+### Phase 9 — フロントエンドを API に接続
+
+**目標:** モックデータを削除し、Rails API からデータを取得・更新する。Read → Create → Update → Delete の順で接続する。
+
+#### 作成・編集するファイル
+
+| ファイル | 内容 |
+|---|---|
+| `src/api/books.ts` | `getBooks` / `createBook` / `updateBook` / `deleteBook` を Axios で実装 |
 | `src/components/KanbanBoard.vue` | モックデータを削除し `getBooks()` で初期化 |
-| `src/components/KanbanColumn.vue` | D&D 時に `updateBook()` でステータスを API に送信 |
-| `src/components/BookModal.vue` | 登録・編集時に `createBook()` / `updateBook()` を呼ぶ |
+| `src/components/BookModal.vue` | `createBook()` / `updateBook()` を呼ぶ |
+| `src/components/KanbanColumn.vue` | D&D 時に `updateBook()` でステータスを送信 |
+| `src/components/KanbanBoard.vue` | 削除確定時に `deleteBook()` を呼ぶ |
+| `vite.config.ts` | `/api` → `http://localhost:3000` へのプロキシ設定を追加 |
 
 #### 完了条件
 
 - ブラウザでカードを移動すると DB のステータスが更新される
-- ページリロード後もデータが保持されている
+- 書籍の追加・編集・削除がページリロード後も反映される
 
 ---
 
-### Phase 5 — Docker Compose でローカル統合確認
+### Phase 10 — Docker Compose でローカル統合確認
 
 **目標:** `docker compose up` の1コマンドで全サービスが起動する。
 
@@ -428,11 +564,11 @@ docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
 
 - `docker compose up` で3サービスが起動する
 - `http://localhost:5173` でカンバンボードが表示される
-- カードの追加・移動・削除が DB に反映される
+- 追加・D&D・編集・削除（確認ダイアログあり）がすべて DB に反映される
 
 ---
 
-### Phase 6 — AWS EC2 + RDS デプロイ
+### Phase 11 — AWS EC2 + RDS デプロイ
 
 **目標:** EC2 上で本番環境を構築し、パブリック IP でアクセスできる状態にする。
 
@@ -448,4 +584,4 @@ docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
 #### 完了条件
 
 - EC2 のパブリック IP にブラウザでアクセスするとカンバンボードが表示される
-- 書籍の追加・ステータス変更が RDS に保存される
+- 書籍の追加・ステータス変更・削除（確認ダイアログあり）が RDS に反映される
