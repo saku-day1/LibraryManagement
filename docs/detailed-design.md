@@ -5,7 +5,7 @@
 | レイヤー | 技術 | バージョン |
 |---|---|---|
 | フロントエンド | Vue 3 + TypeScript (Vite) | Vue 3.x / Vite 5.x |
-| バックエンド | Ruby on Rails (API mode) | Rails 7.x / Ruby 3.3 |
+| バックエンド | Ruby on Rails (API mode) | Rails 8.x / Ruby 3.3 |
 | データベース | MySQL | 8.0 |
 | インフラ（本番） | AWS EC2 + RDS | t3.micro / db.t3.micro |
 | 開発環境 | Docker Compose | - |
