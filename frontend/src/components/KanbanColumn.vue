@@ -12,6 +12,7 @@
         :key="book.id"
         :book="book"
         @edit="$emit('edit', book)"
+        @move="(newStatus) => $emit('move', book, newStatus)"
       />
     </VueDraggable>
     <p v-if="books.length === 0" class="empty-message">書籍なし</p>
@@ -20,13 +21,13 @@
 
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus'
-import type { Book } from '../types/book'
+import type { Book, BookStatus } from '../types/book'
 import BookCard from './BookCard.vue'
 
 const books = defineModel<Book[]>('books', { required: true })
 
 defineProps<{ title: string }>()
-defineEmits<{ moved: []; edit: [book: Book] }>()
+defineEmits<{ moved: []; edit: [book: Book]; move: [book: Book, newStatus: BookStatus] }>()
 </script>
 
 <style scoped>
