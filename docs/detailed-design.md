@@ -10,6 +10,214 @@
 | インフラ（本番） | AWS EC2 + RDS | t3.micro / db.t3.micro |
 | 開発環境 | Docker Compose | - |
 
+---
+
+## ER 図
+
+```mermaid
+erDiagram
+    BOOKS {
+        bigint id PK
+        varchar_255 title
+        varchar_100 author
+        enum status
+        varchar_13 isbn
+        text cover_image_url
+        tinyint rating
+        text memo
+        date started_at
+        date completed_at
+        datetime created_at
+        datetime updated_at
+    }
+```
+
+> 現時点では books テーブル1つのみ。将来的にユーザー管理や複数テーブルを追加する場合はここにリレーションを追記する。
+
+---
+
+## テーブル定義
+
+### books テーブル
+
+| カラム | 型 | 制約 | 説明 |
+|---|---|---|---|
+| id | bigint | PK, AUTO_INCREMENT | 書籍 ID |
+| title | varchar(255) | NOT NULL | タイトル |
+| author | varchar(100) | NOT NULL | 著者名 |
+| status | enum | NOT NULL, DEFAULT 'unread' | 読書ステータス |
+| isbn | varchar(13) | NULLABLE | ISBN（13桁） |
+| cover_image_url | text | NULLABLE | 表紙画像の外部 URL |
+| rating | tinyint | NULLABLE | 評価（1〜5）|
+| memo | text | NULLABLE | 感想メモ |
+| started_at | date | NULLABLE | 読み始め日 |
+| completed_at | date | NULLABLE | 読了日 |
+| created_at | datetime | NOT NULL | 登録日時 |
+| updated_at | datetime | NOT NULL | 更新日時 |
+
+status の enum 値: `unread`（未読） / `reading`（読書中） / `completed`（読了）
+
+---
+
+## API 設計
+
+Base URL: `/api/v1`
+
+| Method | Path | 説明 | ステータスコード |
+|---|---|---|---|
+| GET | /books | 全書籍取得（`?status=unread` でフィルタ可） | 200 |
+| POST | /books | 書籍新規登録 | 201 |
+| GET | /books/:id | 書籍詳細取得 | 200 / 404 |
+| PATCH | /books/:id | 書籍更新（ステータス変更含む） | 200 / 404 / 422 |
+| DELETE | /books/:id | 書籍削除 | 204 / 404 |
+
+### リクエスト・レスポンス例
+
+**POST /books**
+
+```json
+// Request Body
+{
+  "title": "リーダブルコード",
+  "author": "Dustin Boswell",
+  "status": "unread",
+  "isbn": "9784873115658"
+}
+
+// Response 201
+{
+  "id": 1,
+  "title": "リーダブルコード",
+  "author": "Dustin Boswell",
+  "status": "unread",
+  "isbn": "9784873115658",
+  "cover_image_url": null,
+  "rating": null,
+  "memo": null,
+  "started_at": null,
+  "completed_at": null,
+  "created_at": "2026-05-25T00:00:00.000Z"
+}
+```
+
+**PATCH /books/:id（ステータス変更）**
+
+```json
+// Request Body
+{ "status": "reading" }
+
+// Response 200
+{ "id": 1, "status": "reading", ... }
+```
+
+---
+
+## 画面一覧
+
+| 画面名 | 種別 | 説明 |
+|---|---|---|
+| カンバンボード | ページ（メイン） | 3カラムのボード。全書籍カードを表示し、D&D でステータスを変更する |
+| 書籍登録モーダル | モーダル | 新規書籍を登録するフォーム |
+| 書籍詳細・編集モーダル | モーダル | 既存書籍の詳細確認および全フィールドの編集フォーム |
+| 削除確認ダイアログ | ダイアログ | 削除前の確認メッセージと「削除する」「キャンセル」ボタン |
+
+---
+
+## 画面遷移図
+
+```mermaid
+flowchart TD
+    A[カンバンボード\nメイン画面]
+    A -->|「+ 追加」ボタン| B[書籍登録モーダル]
+    A -->|「編集」ボタン| C[書籍詳細・編集モーダル]
+    A -->|「削除」ボタン| D[削除確認ダイアログ]
+    B -->|登録完了| A
+    B -->|キャンセル| A
+    C -->|保存| A
+    C -->|キャンセル| A
+    D -->|削除する| A
+    D -->|キャンセル| A
+    A -->|D&D でカード移動| A
+```
+
+---
+
+## データフロー
+
+### 初期表示
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant V as Vue
+    participant R as Rails API
+    participant DB as MySQL
+
+    U->>V: ブラウザでアクセス
+    V->>R: GET /api/v1/books
+    R->>DB: SELECT * FROM books
+    DB-->>R: 全書籍レコード
+    R-->>V: JSON 配列
+    V-->>U: カンバンボードを描画
+```
+
+### 書籍登録
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant V as Vue
+    participant R as Rails API
+    participant DB as MySQL
+
+    U->>V: 「+ 追加」ボタンを押す
+    V-->>U: 書籍登録モーダルを表示
+    U->>V: フォームを入力して「登録」
+    V->>R: POST /api/v1/books
+    R->>DB: INSERT INTO books
+    DB-->>R: 作成した書籍レコード
+    R-->>V: 201 Created + 書籍 JSON
+    V-->>U: カードをカンバンボードに追加
+```
+
+### D&D によるステータス変更
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant V as Vue
+    participant R as Rails API
+    participant DB as MySQL
+
+    U->>V: カードを別カラムにドラッグ&ドロップ
+    V->>V: UI 上のステータスを即時更新
+    V->>R: PATCH /api/v1/books/:id { status: "reading" }
+    R->>DB: UPDATE books SET status = 'reading'
+    DB-->>R: 更新結果
+    R-->>V: 200 OK
+```
+
+### 書籍削除
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant V as Vue
+    participant R as Rails API
+    participant DB as MySQL
+
+    U->>V: 「削除」ボタンを押す
+    V-->>U: 削除確認ダイアログを表示
+    U->>V: 「削除する」を押す
+    V->>R: DELETE /api/v1/books/:id
+    R->>DB: DELETE FROM books WHERE id = ?
+    DB-->>R: 削除完了
+    R-->>V: 204 No Content
+    V-->>U: カードをボードから除去
+```
+
+---
+
 ## ディレクトリ構成
 
 ```
@@ -45,60 +253,39 @@ LibraryManagement/
 └── README.md
 ```
 
-## データベース設計
+---
 
-### books テーブル
+## デプロイ構成図
 
-| カラム | 型 | 制約 |
-|---|---|---|
-| id | bigint | PK, AUTO_INCREMENT |
-| title | varchar(255) | NOT NULL |
-| author | varchar(100) | NOT NULL |
-| status | enum | NOT NULL, DEFAULT 'unread' |
-| isbn | varchar(13) | NULLABLE |
-| cover_image_url | text | NULLABLE |
-| rating | tinyint | NULLABLE（1〜5） |
-| memo | text | NULLABLE |
-| started_at | date | NULLABLE |
-| completed_at | date | NULLABLE |
-| created_at | datetime | NOT NULL |
-| updated_at | datetime | NOT NULL |
+```mermaid
+flowchart TD
+    User([ユーザー\nブラウザ])
 
-status の enum 値: `unread` / `reading` / `completed`
+    subgraph AWS
+        subgraph EC2["EC2 t3.micro (Amazon Linux 2023)"]
+            Nginx[Nginx\nポート 80]
+            Puma[Puma\nRails API\nポート 3000]
+            Dist["Vue dist/\n静的ファイル"]
+        end
 
-## API 設計
+        subgraph RDS["RDS db.t3.micro"]
+            MySQL[(MySQL 8.0)]
+        end
+    end
 
-Base URL: `/api/v1`
-
-| Method | Path | 説明 |
-|---|---|---|
-| GET | /books | 全書籍取得（`?status=unread` でフィルタ可） |
-| POST | /books | 書籍新規登録 |
-| GET | /books/:id | 書籍詳細取得 |
-| PATCH | /books/:id | 書籍更新（ステータス変更含む） |
-| DELETE | /books/:id | 書籍削除 |
-
-### レスポンス例（GET /books）
-
-```json
-[
-  {
-    "id": 1,
-    "title": "リーダブルコード",
-    "author": "Dustin Boswell",
-    "status": "reading",
-    "isbn": "9784873115658",
-    "cover_image_url": null,
-    "rating": null,
-    "memo": null,
-    "started_at": "2026-05-01",
-    "completed_at": null,
-    "created_at": "2026-05-25T00:00:00.000Z"
-  }
-]
+    User -->|HTTP :80| Nginx
+    Nginx -->|/api/* プロキシ| Puma
+    Nginx -->|それ以外| Dist
+    Puma -->|ポート 3306| MySQL
 ```
 
-## Docker 構成
+- EC2 セキュリティグループ: 80（HTTP）・22（SSH）を開放
+- RDS セキュリティグループ: EC2 からの 3306 のみ許可
+- 環境変数: EC2 の `.env` で DB 接続情報を管理（git 管理外）
+
+---
+
+## Docker 構成（開発環境）
 
 ```yaml
 # docker-compose.yml（概要）
@@ -112,20 +299,6 @@ services:
 - Ruby / Rails はローカルインストール不要（Docker コンテナ内で動作）
 - `docker compose down` でコンテナ停止、`-v` オプションで DB データも削除
 
-## AWS デプロイ構成
-
-```
-[ユーザー] → [EC2 t3.micro]
-               ├── Nginx（リバースプロキシ・Vue の dist/ 配信）
-               └── Puma（Rails API サーバー）
-                        ↓
-            [RDS db.t3.micro (MySQL 8.0)]
-```
-
-- EC2: Amazon Linux 2023
-- RDS: プライベートサブネット、EC2 からの 3306 ポートのみ許可
-- 環境変数: EC2 の `.env` で DB 接続情報を管理（git 管理外）
-
 ---
 
 ## 実装フェーズ詳細
@@ -137,7 +310,6 @@ services:
 #### 実行コマンド
 
 ```bash
-# frontend/ ディレクトリにプロジェクト作成
 npm create vite@latest frontend -- --template vue-ts
 cd frontend
 npm install
@@ -155,8 +327,6 @@ npm install axios vue-draggable-plus
 | `src/App.vue` | KanbanBoard をマウントするルートコンポーネント |
 
 #### モックデータ仕様
-
-`KanbanBoard.vue` 内に以下の構造でモックデータを定義する:
 
 ```ts
 const books = ref<Book[]>([
@@ -199,7 +369,6 @@ const books = ref<Book[]>([
 #### 実行コマンド
 
 ```bash
-# backend/ ディレクトリに Rails API プロジェクト作成
 docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
   bash -c "gem install rails && rails new . --api --database=mysql --skip-git"
 ```
@@ -210,7 +379,7 @@ docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
 |---|---|
 | `config/routes.rb` | `namespace :api do namespace :v1 do resources :books end end` |
 | `app/models/book.rb` | バリデーション（title・author 必須、status enum） |
-| `db/migrate/xxx_create_books.rb` | books テーブル定義（DB設計参照） |
+| `db/migrate/xxx_create_books.rb` | books テーブル定義（テーブル定義参照） |
 | `app/controllers/api/v1/books_controller.rb` | index / show / create / update / destroy |
 | `config/initializers/cors.rb` | フロントエンド（localhost:5173）からの CORS を許可 |
 | `Dockerfile` | `ruby:3.3-slim` ベース |
@@ -270,7 +439,7 @@ docker run --rm -v "$(pwd)/backend:/app" -w /app ruby:3.3 \
 #### 手順概要
 
 1. RDS (MySQL 8.0, db.t3.micro) をプライベートサブネットに作成
-2. EC2 (Amazon Linux 2023, t3.micro) を作成し、セキュリティグループで 80/443/22 を開放
+2. EC2 (Amazon Linux 2023, t3.micro) を作成し、セキュリティグループで 80・22 を開放
 3. EC2 に Ruby 3.3・Nginx・Node.js をインストール
 4. リポジトリをクローンし、`RAILS_ENV=production rails db:migrate` を実行
 5. `npm run build` で Vue を静的ファイルにビルド
