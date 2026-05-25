@@ -1,21 +1,32 @@
 <template>
   <div class="kanban-column">
     <h2 class="column-title">{{ title }}</h2>
-    <div class="card-list">
-      <BookCard v-for="book in books" :key="book.id" :book="book" />
-      <p v-if="books.length === 0" class="empty-message">書籍なし</p>
-    </div>
+    <VueDraggable
+      v-model="books"
+      group="books"
+      class="card-list"
+      @end="$emit('moved')"
+    >
+      <BookCard
+        v-for="book in books"
+        :key="book.id"
+        :book="book"
+        @edit="$emit('edit', book)"
+      />
+    </VueDraggable>
+    <p v-if="books.length === 0" class="empty-message">書籍なし</p>
   </div>
 </template>
 
 <script setup lang="ts">
+import { VueDraggable } from 'vue-draggable-plus'
 import type { Book } from '../types/book'
 import BookCard from './BookCard.vue'
 
-defineProps<{
-  title: string
-  books: Book[]
-}>()
+const books = defineModel<Book[]>('books', { required: true })
+
+defineProps<{ title: string }>()
+defineEmits<{ moved: []; edit: [book: Book] }>()
 </script>
 
 <style scoped>
@@ -42,6 +53,7 @@ defineProps<{
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  min-height: 60px;
 }
 
 .empty-message {
@@ -49,5 +61,6 @@ defineProps<{
   color: #aaa;
   text-align: center;
   margin-top: 20px;
+  pointer-events: none;
 }
 </style>
