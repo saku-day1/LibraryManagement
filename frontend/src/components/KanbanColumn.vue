@@ -13,6 +13,7 @@
         :book="book"
         @edit="$emit('edit', book)"
         @move="(newStatus) => $emit('move', book, newStatus)"
+        @delete="$emit('delete', book)"
       />
     </VueDraggable>
     <p v-if="books.length === 0" class="empty-message">書籍なし</p>
@@ -27,7 +28,7 @@ import BookCard from './BookCard.vue'
 const books = defineModel<Book[]>('books', { required: true })
 
 defineProps<{ title: string }>()
-defineEmits<{ moved: []; edit: [book: Book]; move: [book: Book, newStatus: BookStatus] }>()
+defineEmits<{ moved: []; edit: [book: Book]; move: [book: Book, newStatus: BookStatus]; delete: [book: Book] }>()
 </script>
 
 <style scoped>

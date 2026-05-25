@@ -11,6 +11,7 @@
         @moved="fixStatuses"
         @edit="openEditModal"
         @move="moveBook"
+        @delete="openDeleteDialog"
       />
       <KanbanColumn
         title="読書中"
@@ -18,6 +19,7 @@
         @moved="fixStatuses"
         @edit="openEditModal"
         @move="moveBook"
+        @delete="openDeleteDialog"
       />
       <KanbanColumn
         title="読了"
@@ -25,6 +27,7 @@
         @moved="fixStatuses"
         @edit="openEditModal"
         @move="moveBook"
+        @delete="openDeleteDialog"
       />
     </div>
 
@@ -35,6 +38,13 @@
       @add="handleAdd"
       @update="handleUpdate"
     />
+
+    <DeleteConfirmDialog
+      v-if="deletingBook"
+      :title="deletingBook.title"
+      @confirm="confirmDelete"
+      @cancel="deletingBook = null"
+    />
   </div>
 </template>
 
@@ -43,6 +53,7 @@ import { ref } from 'vue'
 import type { Book, BookStatus } from '../types/book'
 import KanbanColumn from './KanbanColumn.vue'
 import BookModal from './BookModal.vue'
+import DeleteConfirmDialog from './DeleteConfirmDialog.vue'
 
 const unreadBooks = ref<Book[]>([
   { id: 1, title: 'リーダブルコード', author: 'Dustin Boswell', status: 'unread' },
@@ -56,6 +67,7 @@ const completedBooks = ref<Book[]>([
 
 const showModal = ref(false)
 const editingBook = ref<Book | null>(null)
+const deletingBook = ref<Book | null>(null)
 let nextId = 4
 
 function fixStatuses() {
@@ -83,6 +95,22 @@ function closeModal() {
 
 function moveBook(book: Book, newStatus: BookStatus) {
   handleUpdate({ ...book, status: newStatus })
+}
+
+function openDeleteDialog(book: Book) {
+  deletingBook.value = book
+}
+
+function confirmDelete() {
+  if (!deletingBook.value) return
+  for (const arr of [unreadBooks, readingBooks, completedBooks]) {
+    const idx = arr.value.findIndex(b => b.id === deletingBook.value!.id)
+    if (idx !== -1) {
+      arr.value.splice(idx, 1)
+      break
+    }
+  }
+  deletingBook.value = null
 }
 
 function handleUpdate(updated: Book) {

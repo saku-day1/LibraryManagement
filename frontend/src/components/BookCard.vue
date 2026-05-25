@@ -23,7 +23,10 @@
           @click.stop="$emit('move', book.status === 'unread' ? 'reading' : 'completed')"
         >→</button>
       </div>
-      <button class="btn-edit" @click.stop="$emit('edit')">編集</button>
+      <div class="right-actions">
+        <button class="btn-edit" @click.stop="$emit('edit')">編集</button>
+        <button class="btn-delete" @click.stop="$emit('delete')">削除</button>
+      </div>
     </div>
   </div>
 </template>
@@ -32,7 +35,7 @@
 import type { Book, BookStatus } from '../types/book'
 
 defineProps<{ book: Book }>()
-defineEmits<{ edit: []; move: [newStatus: BookStatus] }>()
+defineEmits<{ edit: []; move: [newStatus: BookStatus]; delete: [] }>()
 </script>
 
 <style scoped>
@@ -97,6 +100,12 @@ defineEmits<{ edit: []; move: [newStatus: BookStatus] }>()
   align-items: center;
 }
 
+.right-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .move-buttons {
   display: flex;
   gap: 4px;
@@ -135,5 +144,21 @@ defineEmits<{ edit: []; move: [newStatus: BookStatus] }>()
 
 .btn-edit:hover {
   background: #e8e8e8;
+}
+
+.btn-delete {
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px solid #e57373;
+  border-radius: 4px;
+  background: #fff0f0;
+  color: #c0392b;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
 }
 </style>
