@@ -313,8 +313,7 @@ LibraryManagement/
 ├── backend/                    # Ruby on Rails API
 │   ├── app/
 │   │   ├── controllers/api/v1/books_controller.rb
-│   │   ├── models/book.rb
-│   │   └── serializers/book_serializer.rb
+│   │   └── models/book.rb
 │   ├── config/routes.rb
 │   ├── db/migrate/
 │   ├── Dockerfile

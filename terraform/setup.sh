@@ -29,7 +29,7 @@ curl -fsSL https://rpm.nodesource.com/setup_24.x | sudo bash -
 sudo dnf install -y nodejs
 
 echo "==> [3/8] Bundler をインストール"
-gem install bundler --no-document
+sudo gem install bundler --no-document
 
 echo "==> [4/8] リポジトリをクローン"
 sudo mkdir -p "$APP_DIR"
