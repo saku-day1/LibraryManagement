@@ -107,7 +107,7 @@ GitHub Actions で `push` / `pull_request` 時に自動実行。
 
 | ジョブ | 内容 |
 |---|---|
-| Rails Test | MySQL 8.0 コンテナを起動し `rails test` を実行（18 ケース） |
+| Rails Test | MySQL 8.0 コンテナを起動し `rails test` を実行（33 ケース） |
 | Frontend Build | `npm ci && npm run build` でビルドエラーを検出 |
 
 ---
