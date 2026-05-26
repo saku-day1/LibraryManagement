@@ -7,3 +7,7 @@ terraform/.terraform.lock.hcl
 
 # 本番環境変数
 backend/.env.production
+
+# デプロイスクリプト（認証情報を含むため管理外）
+terraform/deploy_run.sh
+terraform/deploy_run_fixed.sh
