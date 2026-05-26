@@ -3,8 +3,13 @@ import type { Book } from '../types/book'
 
 const api = axios.create({ baseURL: '/api/v1' })
 
-export function getBooks() {
-  return api.get<Book[]>('/books').then(r => r.data)
+export interface BookSearchParams {
+  q?: string
+  status?: string
+}
+
+export function getBooks(params?: BookSearchParams) {
+  return api.get<Book[]>('/books', { params }).then(r => r.data)
 }
 
 export function createBook(payload: Omit<Book, 'id' | 'created_at'>) {

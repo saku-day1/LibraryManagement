@@ -1,6 +1,24 @@
 <template>
   <div>
     <div class="board-header">
+      <div class="search-area">
+        <input
+          v-model="searchQuery"
+          class="search-input"
+          type="text"
+          placeholder="タイトル・著者で検索"
+          @input="onSearch"
+        />
+        <div class="status-filters">
+          <button
+            v-for="f in STATUS_FILTERS"
+            :key="f.value"
+            class="filter-btn"
+            :class="{ active: statusFilter === f.value }"
+            @click="onStatusFilter(f.value)"
+          >{{ f.label }}</button>
+        </div>
+      </div>
       <button class="btn-add" @click="showModal = true">+ 追加</button>
     </div>
 
@@ -60,6 +78,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { Book, BookStatus } from '../types/book'
+import { getBooks, createBook, updateBook, deleteBook } from '../api/books'
+import KanbanColumn from './KanbanColumn.vue'
+import BookModal from './BookModal.vue'
+import DeleteConfirmDialog from './DeleteConfirmDialog.vue'
 
 const ERROR_MESSAGES = {
   load:   '書籍データを取得できませんでした。ページを再読み込みしてください。',
@@ -68,10 +90,13 @@ const ERROR_MESSAGES = {
   update: '書籍の更新に失敗しました。もう一度お試しください。',
   delete: '削除に失敗しました。もう一度お試しください。',
 } as const
-import { getBooks, createBook, updateBook, deleteBook } from '../api/books'
-import KanbanColumn from './KanbanColumn.vue'
-import BookModal from './BookModal.vue'
-import DeleteConfirmDialog from './DeleteConfirmDialog.vue'
+
+const STATUS_FILTERS = [
+  { label: 'すべて', value: '' },
+  { label: '未読',   value: 'unread' },
+  { label: '読書中', value: 'reading' },
+  { label: '読了',   value: 'completed' },
+] as const
 
 const unreadBooks = ref<Book[]>([])
 const readingBooks = ref<Book[]>([])
@@ -82,22 +107,42 @@ const editingBook = ref<Book | null>(null)
 const deletingBook = ref<Book | null>(null)
 const errorMessage = ref('')
 const loadError = ref(false)
+const searchQuery = ref('')
+const statusFilter = ref('')
+
+let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 function showError(msg: string) {
   errorMessage.value = msg
   setTimeout(() => { errorMessage.value = '' }, 4000)
 }
 
-onMounted(async () => {
+async function fetchBooks() {
+  const params: { q?: string; status?: string } = {}
+  if (searchQuery.value.trim()) params.q = searchQuery.value.trim()
+  if (statusFilter.value) params.status = statusFilter.value
   try {
-    const books = await getBooks()
+    const books = await getBooks(params)
     unreadBooks.value = books.filter(b => b.status === 'unread')
     readingBooks.value = books.filter(b => b.status === 'reading')
     completedBooks.value = books.filter(b => b.status === 'completed')
+    loadError.value = false
   } catch {
     loadError.value = true
   }
-})
+}
+
+function onSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(fetchBooks, 300)
+}
+
+function onStatusFilter(value: string) {
+  statusFilter.value = value
+  fetchBooks()
+}
+
+onMounted(fetchBooks)
 
 async function fixStatuses() {
   const updates: Promise<unknown>[] = []
@@ -197,8 +242,56 @@ async function handleUpdate(updated: Book) {
 <style scoped>
 .board-header {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   padding: 16px 24px 0;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.search-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  width: 220px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: #1a1a2e;
+}
+
+.status-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-btn {
+  padding: 6px 14px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.filter-btn:hover {
+  border-color: #1a1a2e;
+}
+
+.filter-btn.active {
+  background: #1a1a2e;
+  color: #fff;
+  border-color: #1a1a2e;
 }
 
 .btn-add {
