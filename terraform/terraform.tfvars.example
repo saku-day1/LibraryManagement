@@ -1,0 +1,19 @@
+# terraform.tfvars.example
+# このファイルを terraform.tfvars にコピーして値を書き換えてください。
+# terraform.tfvars は .gitignore に追加済みのため Git には含まれません。
+
+aws_region      = "ap-northeast-1"
+app_name        = "library-management"
+
+# curl ifconfig.me で確認した自分のグローバル IP を /32 で指定
+my_ip           = "YOUR_IP/32"
+
+# RDS MySQL の root パスワード（英数字・記号 8 文字以上推奨）
+db_password     = "YOUR_SECURE_PASSWORD"
+
+# SSH 公開鍵のパス（デフォルトは ~/.ssh/id_rsa.pub）
+public_key_path = "~/.ssh/id_rsa.pub"
+
+# インスタンスタイプ（無料枠対象は t2.micro / t3.micro）
+ec2_instance_type = "t3.micro"
+db_instance_class = "db.t3.micro"

@@ -51,8 +51,7 @@
 | `/start-frontend` | Vue 開発サーバーを起動（localhost:5173） | フロントエンド動作確認時 |
 | `/start-backend` | Rails API + MySQL を Docker で起動（localhost:3000） | バックエンド動作確認時 |
 | `/review` | 要件定義・詳細設計・フェーズ完了条件との整合性を確認 | 各フェーズの実装完了後・PR 作成前 |
-| `/security-check` | セキュリティ上の問題がないか確認 | PR 作成前 |
-| `/cost-check` | 実装コストや依存関係の重さを確認 | 新規ライブラリ追加時・PR 作成前 |
+| `/code-review` | 要件逸脱・責務分離・保守性・セキュリティ・運用性・テストの6観点でレビュー | PR 作成前 |
 
 ## 技術スタック
 

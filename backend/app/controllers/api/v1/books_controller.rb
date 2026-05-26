@@ -4,8 +4,10 @@ module Api
       before_action :set_book, only: [:show, :update, :destroy]
 
       def index
-        books = Book.all.order(created_at: :desc)
-        render json: books
+        books = Book.all
+        books = books.where(status: params[:status]) if params[:status].present?
+        books = books.where("title LIKE ? OR author LIKE ?", "%#{params[:q]}%", "%#{params[:q]}%") if params[:q].present?
+        render json: books.order(created_at: :desc)
       end
 
       def show
