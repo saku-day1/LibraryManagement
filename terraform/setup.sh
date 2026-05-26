@@ -20,26 +20,15 @@ APP_DIR="/var/www/library-management"
 
 echo "==> [1/8] システムパッケージを更新"
 sudo dnf update -y
-sudo dnf install -y git nginx gcc gcc-c++ make \
-  openssl-devel readline-devel zlib-devel libffi-devel \
-  libyaml-devel mysql-devel
+sudo dnf install -y git nginx \
+  ruby ruby-devel \
+  mariadb105-devel
 
 echo "==> [2/8] Node.js 24 をインストール"
 curl -fsSL https://rpm.nodesource.com/setup_24.x | sudo bash -
 sudo dnf install -y nodejs
 
-echo "==> [3/8] rbenv + Ruby 3.3 をインストール"
-if [ ! -d "$HOME/.rbenv" ]; then
-  git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-  git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-  echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-  echo 'eval "$(rbenv init -)"' >> ~/.bashrc
-fi
-export PATH="$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
-
-rbenv install -s 3.3.11
-rbenv global 3.3.11
+echo "==> [3/8] Bundler をインストール"
 gem install bundler --no-document
 
 echo "==> [4/8] リポジトリをクローン"
@@ -96,8 +85,6 @@ sudo nginx -t
 sudo systemctl enable --now nginx
 
 echo "==> [8/8] Puma を systemd サービスとして登録"
-BUNDLE_PATH=$(rbenv which bundle)
-
 sudo tee /etc/systemd/system/puma.service > /dev/null << EOF
 [Unit]
 Description=Puma HTTP Server (LibraryManagement)
@@ -108,7 +95,7 @@ Type=simple
 User=ec2-user
 WorkingDirectory=${APP_DIR}/backend
 EnvironmentFile=${APP_DIR}/backend/.env.production
-ExecStart=${BUNDLE_PATH} exec rails server -e production -b 127.0.0.1 -p 3000
+ExecStart=/usr/bin/bundle exec /usr/bin/ruby bin/rails server -e production -b 127.0.0.1 -p 3000
 Restart=on-failure
 RestartSec=5
 

@@ -11,6 +11,44 @@ class Api::V1::BooksControllerTest < ActionDispatch::IntegrationTest
     assert_kind_of Array, body
   end
 
+  test "一覧取得: ?status=reading なら読書中の本だけ返す" do
+    get "/api/v1/books", params: { status: "reading" }
+    assert_response :success
+    body = JSON.parse(@response.body)
+    assert body.all? { |b| b["status"] == "reading" }, "reading 以外のステータスが含まれている"
+    assert body.any?, "読書中の本が1件も返っていない"
+  end
+
+  test "一覧取得: ?status=completed なら読了の本だけ返す" do
+    get "/api/v1/books", params: { status: "completed" }
+    assert_response :success
+    body = JSON.parse(@response.body)
+    assert body.all? { |b| b["status"] == "completed" }
+  end
+
+  test "一覧取得: ?q= でタイトル部分一致検索できる" do
+    get "/api/v1/books", params: { q: "リーダブル" }
+    assert_response :success
+    body = JSON.parse(@response.body)
+    assert body.any?, "検索結果が0件"
+    assert body.all? { |b| b["title"].include?("リーダブル") || b["author"].include?("リーダブル") }
+  end
+
+  test "一覧取得: ?q= で著者部分一致検索できる" do
+    get "/api/v1/books", params: { q: "Evans" }
+    assert_response :success
+    body = JSON.parse(@response.body)
+    assert body.any?, "検索結果が0件"
+    assert body.all? { |b| b["title"].include?("Evans") || b["author"].include?("Evans") }
+  end
+
+  test "一覧取得: ?q= にマッチしない場合は空配列を返す" do
+    get "/api/v1/books", params: { q: "存在しないキーワードXYZ" }
+    assert_response :success
+    body = JSON.parse(@response.body)
+    assert_empty body
+  end
+
   # --- GET /api/v1/books/:id ---
 
   test "詳細取得: 存在する ID なら 200 を返す" do

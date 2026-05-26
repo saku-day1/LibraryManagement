@@ -27,6 +27,11 @@ class BookTest < ActiveSupport::TestCase
     assert book.valid?
   end
 
+  test "isbn が空文字列なら有効" do
+    book = Book.new(title: "本", author: "著者", status: "unread", isbn: "")
+    assert book.valid?
+  end
+
   # --- 異常系: title ---
 
   test "title が空なら無効" do

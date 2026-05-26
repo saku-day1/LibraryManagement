@@ -10,7 +10,7 @@
     </div>
 
     <div v-if="loadError" class="load-error">
-      <p>書籍データを取得できませんでした。ページを再読み込みしてください。</p>
+      <p>{{ ERROR_MESSAGES.load }}</p>
     </div>
 
     <div class="kanban-board">
@@ -60,6 +60,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { Book, BookStatus } from '../types/book'
+
+const ERROR_MESSAGES = {
+  load:   '書籍データを取得できませんでした。ページを再読み込みしてください。',
+  status: 'ステータスの更新に失敗しました。ページを再読み込みしてください。',
+  add:    '書籍の登録に失敗しました。もう一度お試しください。',
+  update: '書籍の更新に失敗しました。もう一度お試しください。',
+  delete: '削除に失敗しました。もう一度お試しください。',
+} as const
 import { getBooks, createBook, updateBook, deleteBook } from '../api/books'
 import KanbanColumn from './KanbanColumn.vue'
 import BookModal from './BookModal.vue'
@@ -116,7 +124,7 @@ async function fixStatuses() {
   try {
     await Promise.all(updates)
   } catch {
-    showError('ステータスの更新に失敗しました。ページを再読み込みしてください。')
+    showError(ERROR_MESSAGES.status)
   }
 }
 
@@ -127,7 +135,7 @@ async function handleAdd(newBook: Omit<Book, 'id'>) {
     else if (book.status === 'completed') completedBooks.value.push(book)
     else unreadBooks.value.push(book)
   } catch {
-    showError('書籍の登録に失敗しました。もう一度お試しください。')
+    showError(ERROR_MESSAGES.add)
   }
 }
 
@@ -162,7 +170,7 @@ async function confirmDelete() {
     }
     deletingBook.value = null
   } catch {
-    showError('削除に失敗しました。もう一度お試しください。')
+    showError(ERROR_MESSAGES.delete)
     deletingBook.value = null
   }
 }
@@ -181,7 +189,7 @@ async function handleUpdate(updated: Book) {
     else if (saved.status === 'completed') completedBooks.value.push(saved)
     else unreadBooks.value.push(saved)
   } catch {
-    showError('書籍の更新に失敗しました。もう一度お試しください。')
+    showError(ERROR_MESSAGES.update)
   }
 }
 </script>

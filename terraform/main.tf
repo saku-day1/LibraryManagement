@@ -116,9 +116,10 @@ resource "aws_db_instance" "main" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  publicly_accessible = false
-  multi_az            = false
-  skip_final_snapshot = true
+  publicly_accessible     = false
+  multi_az                = false
+  skip_final_snapshot     = false
+  final_snapshot_identifier = "${var.app_name}-db-final-snapshot"
 
   tags = {
     Name = "${var.app_name}-db"
@@ -128,10 +129,11 @@ resource "aws_db_instance" "main" {
 # ── EC2 ───────────────────────────────────────────────────────────────────────
 
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.ec2_instance_type
-  key_name               = aws_key_pair.main.key_name
-  vpc_security_group_ids = [aws_security_group.ec2.id]
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = var.ec2_instance_type
+  key_name                    = aws_key_pair.main.key_name
+  vpc_security_group_ids      = [aws_security_group.ec2.id]
+  associate_public_ip_address = true
 
   tags = {
     Name = var.app_name
